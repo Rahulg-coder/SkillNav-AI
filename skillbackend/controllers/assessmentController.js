@@ -46,8 +46,12 @@ const submitAssessment = async (req, res, next) => {
 
     try {
       const aiResult = await analyzeAssessment({
-        userId,
-        targetRole,
+        profile: {
+          name: user.name,
+          targetRole: targetRole,
+          experience: user.experience,
+          profileCompleted: user.profileCompleted,
+        },
         answers,
       });
 
