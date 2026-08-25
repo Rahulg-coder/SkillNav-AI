@@ -1,4 +1,5 @@
 const Chat = require("../models/Chat");
+const User = require("../models/User");
 
 const { chatWithAI } = require("../services/aiService");
 
@@ -45,8 +46,13 @@ const sendMessage = async (req, res, next) => {
 
     try {
       const aiResponse = await chatWithAI({
-        userId,
         message: message.trim(),
+        profile: {
+          name: user.name,
+          targetRole: user.targetRole,
+          experience: user.experience,
+          profileCompleted: user.profileCompleted,
+        },
         history,
       });
 
