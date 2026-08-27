@@ -1,6 +1,8 @@
 const express = require("express");
 
-const { getRoadmap } = require("../controllers/roadmapController");
+const {
+  getRoadmap,
+} = require("../controllers/roadmapController");
 
 const router = express.Router();
 

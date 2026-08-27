@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -7,66 +8,157 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 function Roadmap() {
-  const roadmap = [
-    {
-      title: "Networking Fundamentals",
-      description: "Build the networking foundation required for cybersecurity.",
-      duration: "5 hours",
-      progress: 100,
-      status: "completed",
-      resources: 4,
+  const [roadmap, setRoadmap] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const userId =
+    localStorage.getItem(
+      "skillpath_user_id"
+    );
+
+  useEffect(() => {
+    const fetchRoadmap = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        if (!userId) {
+          setError(
+            "User session not found. Please login again."
+          );
+          return;
+        }
+
+        const response =
+          await API.get(
+            `/roadmap?userId=${userId}`
+          );
+
+        if (!response.data.success) {
+          setError(
+            response.data.error ||
+              "Unable to load roadmap."
+          );
+          return;
+        }
+
+        setRoadmap(
+          response.data.data
+        );
+      } catch (err) {
+        console.error(
+          "Roadmap error:",
+          err
+        );
+
+        setError(
+          err.response?.data?.error ||
+            "Unable to load your roadmap."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoadmap();
+  }, [userId]);
+
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+
+        <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center">
+
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
+            <Sparkles size={30} />
+          </div>
+
+          <h1 className="text-2xl font-bold text-slate-900 mt-5">
+            Building Your Learning Roadmap
+          </h1>
+
+          <p className="text-slate-500 mt-2">
+            SkillPath-AI is organizing your skill gaps
+            into a personalized learning sequence.
+          </p>
+
+          <div className="flex justify-center mt-6">
+
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+
+          </div>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  // =====================================================
+  // ERROR
+  // =====================================================
+
+  if (error || !roadmap) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+
+        <h2 className="font-bold text-red-700">
+          Unable to Load Roadmap
+        </h2>
+
+        <p className="text-sm text-red-600 mt-2">
+          {error ||
+            "No roadmap is available yet."}
+        </p>
+
+      </div>
+    );
+  }
+
+  const phases =
+    roadmap.phases || [];
+
+  const completedCount =
+    phases.filter(
+      (phase) =>
+        phase.status ===
+        "completed"
+    ).length;
+
+  const currentPhase =
+    phases.find(
+      (phase) =>
+        phase.status ===
+        "in-progress"
+    );
+
+  const totalHours = phases.reduce(
+    (sum, phase) => {
+      const match =
+        phase.duration?.match(
+          /(\d+(\.\d+)?)/
+        );
+
+      return (
+        sum +
+        (match
+          ? Number(match[1])
+          : 0)
+      );
     },
-    {
-      title: "Linux Fundamentals",
-      description: "Learn Linux commands, permissions and system administration.",
-      duration: "7 hours",
-      progress: 100,
-      status: "completed",
-      resources: 5,
-    },
-    {
-      title: "Security Fundamentals",
-      description: "Understand threats, vulnerabilities, authentication and security principles.",
-      duration: "8 hours",
-      progress: 62,
-      status: "current",
-      resources: 6,
-    },
-    {
-      title: "Web Security",
-      description: "Learn common web vulnerabilities and secure application practices.",
-      duration: "10 hours",
-      progress: 0,
-      status: "upcoming",
-      resources: 7,
-    },
-    {
-      title: "SIEM & Log Analysis",
-      description: "Learn security monitoring, logs and threat detection using SIEM concepts.",
-      duration: "12 hours",
-      progress: 0,
-      status: "locked",
-      resources: 8,
-    },
-    {
-      title: "Incident Response",
-      description: "Learn how to detect, investigate and respond to security incidents.",
-      duration: "10 hours",
-      progress: 0,
-      status: "locked",
-      resources: 6,
-    },
-    {
-      title: "Cybersecurity Capstone Project",
-      description: "Apply your skills by building a practical cybersecurity project.",
-      duration: "20 hours",
-      progress: 0,
-      status: "locked",
-      resources: 3,
-    },
-  ];
+    0
+  );
 
   const getStatus = (status) => {
     switch (status) {
@@ -77,25 +169,18 @@ function Roadmap() {
           bg: "bg-emerald-50",
         };
 
-      case "current":
+      case "in-progress":
         return {
           label: "Learning Now",
           color: "text-blue-600",
           bg: "bg-blue-50",
         };
 
-      case "upcoming":
+      default:
         return {
           label: "Upcoming",
           color: "text-amber-600",
           bg: "bg-amber-50",
-        };
-
-      default:
-        return {
-          label: "Locked",
-          color: "text-slate-400",
-          bg: "bg-slate-100",
         };
     }
   };
@@ -103,8 +188,12 @@ function Roadmap() {
   return (
     <div className="space-y-6">
 
-      {/* Header */}
+      {/* ================================================= */}
+      {/* HEADER */}
+      {/* ================================================= */}
+
       <section>
+
         <div className="flex items-center gap-2 text-sm text-blue-600 font-medium mb-2">
           <Sparkles size={17} />
           AI-Generated Learning Path
@@ -113,24 +202,37 @@ function Roadmap() {
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
 
           <div>
+
             <h1 className="text-3xl font-bold text-slate-900">
               Your Learning Roadmap
             </h1>
 
             <p className="text-slate-500 mt-2">
-              A personalized sequence designed for your Cybersecurity Engineer goal.
+              A personalized sequence designed for your{" "}
+              {roadmap.targetRole} goal.
             </p>
+
           </div>
 
           <div className="flex items-center gap-2 text-sm text-slate-500">
+
             <Clock3 size={17} />
-            Estimated total: 72 hours
+
+            Estimated total:{" "}
+            {totalHours > 0
+              ? `${totalHours} hours`
+              : "AI estimated"}
+
           </div>
 
         </div>
+
       </section>
 
-      {/* AI Recommendation */}
+      {/* ================================================= */}
+      {/* AI RECOMMENDATION */}
+      {/* ================================================= */}
+
       <section className="bg-slate-950 rounded-2xl p-6 text-white">
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
@@ -142,86 +244,128 @@ function Roadmap() {
             </div>
 
             <div>
+
               <p className="text-sm text-blue-300 font-semibold">
                 AI RECOMMENDATION
               </p>
 
               <h2 className="text-xl font-bold mt-1">
-                Continue Security Fundamentals
+
+                {currentPhase
+                  ? `Continue ${currentPhase.title}`
+                  : "Start your learning journey"}
+
               </h2>
 
               <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-                You're 62% through this module. Completing it will unlock
-                Web Security and move you closer to your target role.
+
+                {currentPhase
+                  ? `You are currently working on ${currentPhase.title}. Complete this phase to unlock the next stage.`
+                  : "Follow the personalized sequence generated for your target role."}
+
               </p>
+
             </div>
 
           </div>
 
-          <button className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 bg-white text-slate-900 rounded-xl font-semibold hover:bg-slate-100 transition">
-            Continue
-            <ArrowRight size={17} />
-          </button>
+          {currentPhase && (
+            <button className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 bg-white text-slate-900 rounded-xl font-semibold hover:bg-slate-100 transition">
+
+              Continue
+
+              <ArrowRight size={17} />
+
+            </button>
+          )}
 
         </div>
 
       </section>
 
-      {/* Progress */}
+      {/* ================================================= */}
+      {/* PROGRESS */}
+      {/* ================================================= */}
+
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
+        {/* Overall */}
+
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
+
           <p className="text-sm text-slate-500">
             Overall Progress
           </p>
 
           <p className="text-3xl font-bold text-slate-900 mt-2">
-            42%
+            {roadmap.overallProgress || 0}%
           </p>
 
           <div className="h-2 bg-slate-100 rounded-full mt-4 overflow-hidden">
+
             <div
               className="h-full bg-blue-600 rounded-full"
-              style={{ width: "42%" }}
+              style={{
+                width: `${
+                  roadmap.overallProgress || 0
+                }%`,
+              }}
             />
+
           </div>
+
         </div>
 
+        {/* Milestones */}
+
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
+
           <p className="text-sm text-slate-500">
             Milestones Completed
           </p>
 
           <p className="text-3xl font-bold text-slate-900 mt-2">
-            2 / 7
+            {completedCount} / {phases.length}
           </p>
 
           <p className="text-sm text-emerald-600 mt-3">
             Keep building momentum
           </p>
+
         </div>
 
+        {/* Target Role */}
+
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
+
           <p className="text-sm text-slate-500">
             Target Role
           </p>
 
           <p className="text-xl font-bold text-slate-900 mt-2">
-            Cybersecurity Engineer
+            {roadmap.targetRole}
           </p>
 
           <div className="flex items-center gap-2 text-sm text-blue-600 mt-3">
+
             <Target size={16} />
+
             Personalized path
+
           </div>
+
         </div>
 
       </section>
 
-      {/* Roadmap */}
+      {/* ================================================= */}
+      {/* LEARNING JOURNEY */}
+      {/* ================================================= */}
+
       <section className="bg-white border border-slate-200 rounded-2xl p-6">
 
         <div className="mb-7">
+
           <h2 className="text-lg font-bold text-slate-900">
             Learning Journey
           </h2>
@@ -229,138 +373,237 @@ function Roadmap() {
           <p className="text-sm text-slate-500 mt-1">
             Complete each milestone to unlock the next stage.
           </p>
+
         </div>
 
         <div className="relative">
 
-          {/* Vertical line */}
           <div className="absolute left-6 top-6 bottom-6 w-px bg-slate-200" />
 
           <div className="space-y-7">
 
-            {roadmap.map((item, index) => {
+            {phases.map(
+              (item, index) => {
 
-              const status = getStatus(item.status);
+                const status =
+                  getStatus(
+                    item.status
+                  );
 
-              return (
-                <div
-                  key={item.title}
-                  className="relative flex gap-5"
-                >
-
-                  {/* Icon */}
-                  <div className="relative z-10 shrink-0">
-
-                    {item.status === "completed" ? (
-                      <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center border-4 border-white">
-                        <CheckCircle2 size={22} />
-                      </div>
-                    ) : item.status === "current" ? (
-                      <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center border-4 border-white shadow-lg shadow-blue-100">
-                        <BookOpen size={21} />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white">
-                        <Lock size={19} />
-                      </div>
-                    )}
-
-                  </div>
-
-                  {/* Content */}
+                return (
                   <div
-                    className={`flex-1 border rounded-2xl p-5 ${
-                      item.status === "current"
-                        ? "border-blue-200 bg-blue-50/40"
-                        : "border-slate-200"
-                    }`}
+                    key={
+                      item._id ||
+                      item.title
+                    }
+                    className="relative flex gap-5"
                   >
 
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    {/* ICON */}
 
-                      <div>
+                    <div className="relative z-10 shrink-0">
 
-                        <div className="flex items-center gap-2 flex-wrap">
+                      {item.status ===
+                      "completed" ? (
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center border-4 border-white">
 
-                          <h3 className="font-bold text-slate-900">
-                            {index + 1}. {item.title}
-                          </h3>
-
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${status.bg} ${status.color}`}
-                          >
-                            {status.label}
-                          </span>
-
-                        </div>
-
-                        <p className="text-sm text-slate-500 mt-2 max-w-2xl">
-                          {item.description}
-                        </p>
-
-                      </div>
-
-                      <div className="text-sm text-slate-400 shrink-0">
-                        {item.duration}
-                      </div>
-
-                    </div>
-
-                    {/* Progress */}
-                    {item.status !== "locked" && (
-                      <div className="mt-4">
-
-                        <div className="flex justify-between text-xs mb-2">
-
-                          <span className="text-slate-500">
-                            Progress
-                          </span>
-
-                          <span className="font-semibold text-slate-700">
-                            {item.progress}%
-                          </span>
-
-                        </div>
-
-                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-
-                          <div
-                            className={`h-full rounded-full ${
-                              item.status === "completed"
-                                ? "bg-emerald-500"
-                                : "bg-blue-600"
-                            }`}
-                            style={{
-                              width: `${item.progress}%`,
-                            }}
+                          <CheckCircle2
+                            size={22}
                           />
 
                         </div>
+                      ) : item.status ===
+                        "in-progress" ? (
+                        <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center border-4 border-white shadow-lg shadow-blue-100">
 
-                      </div>
-                    )}
+                          <BookOpen
+                            size={21}
+                          />
 
-                    {/* Resources */}
-                    <div className="flex items-center justify-between mt-4">
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white">
 
-                      <span className="text-xs text-slate-400">
-                        {item.resources} learning resources
-                      </span>
+                          <Lock
+                            size={19}
+                          />
 
-                      {item.status === "current" && (
-                        <button className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700">
-                          Continue
-                          <ArrowRight size={15} />
-                        </button>
+                        </div>
                       )}
 
                     </div>
 
-                  </div>
+                    {/* CONTENT */}
 
-                </div>
-              );
-            })}
+                    <div
+                      className={`flex-1 border rounded-2xl p-5 ${
+                        item.status ===
+                        "in-progress"
+                          ? "border-blue-200 bg-blue-50/40"
+                          : "border-slate-200"
+                      }`}
+                    >
+
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+
+                        <div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+
+                            <h3 className="font-bold text-slate-900">
+
+                              {index + 1}.{" "}
+                              {item.title}
+
+                            </h3>
+
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${status.bg} ${status.color}`}
+                            >
+                              {status.label}
+                            </span>
+
+                          </div>
+
+                          <p className="text-sm text-slate-500 mt-2 max-w-2xl">
+                            {item.description}
+                          </p>
+
+                        </div>
+
+                        {item.duration && (
+                          <div className="text-sm text-slate-400 shrink-0">
+                            {item.duration}
+                          </div>
+                        )}
+
+                      </div>
+
+                      {/* SKILLS */}
+
+                      {item.skills?.length >
+                        0 && (
+                        <div className="flex flex-wrap gap-2 mt-4">
+
+                          {item.skills.map(
+                            (
+                              skill,
+                              skillIndex
+                            ) => (
+                              <span
+                                key={
+                                  skillIndex
+                                }
+                                className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium"
+                              >
+                                {skill}
+                              </span>
+                            )
+                          )}
+
+                        </div>
+                      )}
+
+                      {/* PREREQUISITES */}
+
+                      {item.prerequisites
+                        ?.length >
+                        0 && (
+                        <div className="mt-4 text-xs text-slate-400">
+
+                          <span className="font-semibold">
+                            Prerequisites:
+                          </span>{" "}
+
+                          {item.prerequisites.join(
+                            ", "
+                          )}
+
+                        </div>
+                      )}
+
+                      {/* PROGRESS */}
+
+                      {item.status !==
+                        "pending" && (
+                        <div className="mt-4">
+
+                          <div className="flex justify-between text-xs mb-2">
+
+                            <span className="text-slate-500">
+                              Progress
+                            </span>
+
+                            <span className="font-semibold text-slate-700">
+                              {item.progress ||
+                                0}
+                              %
+                            </span>
+
+                          </div>
+
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+
+                            <div
+                              className={`h-full rounded-full ${
+                                item.status ===
+                                "completed"
+                                  ? "bg-emerald-500"
+                                  : "bg-blue-600"
+                              }`}
+                              style={{
+                                width: `${
+                                  item.progress ||
+                                  0
+                                }%`,
+                              }}
+                            />
+
+                          </div>
+
+                        </div>
+                      )}
+
+                      {/* FOOTER */}
+
+                      <div className="flex items-center justify-between mt-4">
+
+                        <span className="text-xs text-slate-400">
+
+                          {item.resources ||
+                            item.skills?.length ||
+                            0}{" "}
+                          learning resources
+
+                        </span>
+
+                        {item.status === "in-progress" && (
+  <button
+    onClick={() =>
+      navigate(`/learning/${item._id}`, {
+        state: {
+          phase: item,
+          roadmapTitle: roadmap.title,
+          targetRole: roadmap.targetRole,
+        },
+      })
+    }
+    className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 transition"
+  >
+    Continue
+
+    <ArrowRight size={15} />
+  </button>
+)}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+                );
+              }
+            )}
 
           </div>
 
@@ -368,7 +611,10 @@ function Roadmap() {
 
       </section>
 
-      {/* Adaptive Learning */}
+      {/* ================================================= */}
+      {/* ADAPTIVE LEARNING */}
+      {/* ================================================= */}
+
       <section className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
 
         <div className="flex gap-4">
@@ -378,16 +624,19 @@ function Roadmap() {
           </div>
 
           <div>
+
             <h2 className="font-bold text-slate-900">
               Your roadmap adapts as you learn
             </h2>
 
             <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-              SkillPath-AI will update this roadmap based on your
-              assessment results, completed resources and feedback.
-              Strong areas can be accelerated while weak areas receive
-              additional practice.
+              SkillPath-AI will update this roadmap based on
+              your assessment results, completed learning
+              activities and progress. Strong areas can be
+              accelerated while weak areas receive additional
+              practice.
             </p>
+
           </div>
 
         </div>

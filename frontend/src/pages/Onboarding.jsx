@@ -6,26 +6,63 @@ import {
   Target,
   Sparkles,
 } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 function Onboarding() {
   const [goal, setGoal] = useState("");
   const [experience, setExperience] = useState("Beginner");
   const [hours, setHours] = useState("1-2");
   const [skills, setSkills] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const navigate = useNavigate();
 
-    console.log({
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  try {
+    const userId = localStorage.getItem("skillpath_user_id");
+
+    if (!userId) {
+      alert("User session not found. Please login again.");
+      navigate("/login");
+      return;
+    }
+
+    const response = await API.put("/profile", {
+      userId,
       goal,
       experience,
-      hours,
       skills,
+      hours,
     });
 
-    alert("Your personalized learning path will be generated!");
-  };
+    if (!response.data.success) {
+      alert(response.data.error || "Unable to save profile.");
+      return;
+    }
 
+    // Keep a local copy as well
+    localStorage.setItem(
+      "skillpath_profile",
+      JSON.stringify({
+        goal,
+        experience,
+        hours,
+        skills,
+      })
+    );
+
+    navigate("/dashboard");
+
+  } catch (error) {
+    console.error("Profile update error:", error);
+
+    alert(
+      error.response?.data?.error ||
+      "Unable to save your learning profile."
+    );
+  }
+};
   return (
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
 
@@ -58,11 +95,15 @@ function Onboarding() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-            {/* Goal */}
+            {/* Career Goal */}
             <div className="md:col-span-2">
 
               <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                <Target size={18} className="text-blue-600" />
+                <Target
+                  size={18}
+                  className="text-blue-600"
+                />
+
                 What is your career goal?
               </label>
 
@@ -81,18 +122,32 @@ function Onboarding() {
             <div>
 
               <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                <Brain size={18} className="text-purple-600" />
+                <Brain
+                  size={18}
+                  className="text-purple-600"
+                />
+
                 Experience Level
               </label>
 
               <select
                 value={experience}
-                onChange={(e) => setExperience(e.target.value)}
+                onChange={(e) =>
+                  setExperience(e.target.value)
+                }
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
+                <option value="Beginner">
+                  Beginner
+                </option>
+
+                <option value="Intermediate">
+                  Intermediate
+                </option>
+
+                <option value="Advanced">
+                  Advanced
+                </option>
               </select>
 
             </div>
@@ -101,19 +156,36 @@ function Onboarding() {
             <div>
 
               <label className="flex items-center gap-2 text-sm font-semibold mb-2">
-                <Clock3 size={18} className="text-emerald-600" />
+                <Clock3
+                  size={18}
+                  className="text-emerald-600"
+                />
+
                 Learning Time Per Day
               </label>
 
               <select
                 value={hours}
-                onChange={(e) => setHours(e.target.value)}
+                onChange={(e) =>
+                  setHours(e.target.value)
+                }
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
-                <option value="less-than-1">Less than 1 hour</option>
-                <option value="1-2">1–2 hours</option>
-                <option value="2-4">2–4 hours</option>
-                <option value="4+">4+ hours</option>
+                <option value="less-than-1">
+                  Less than 1 hour
+                </option>
+
+                <option value="1-2">
+                  1–2 hours
+                </option>
+
+                <option value="2-4">
+                  2–4 hours
+                </option>
+
+                <option value="4+">
+                  4+ hours
+                </option>
               </select>
 
             </div>
@@ -127,15 +199,17 @@ function Onboarding() {
 
               <textarea
                 value={skills}
-                onChange={(e) => setSkills(e.target.value)}
+                onChange={(e) =>
+                  setSkills(e.target.value)
+                }
                 placeholder="e.g. Python, Networking, HTML, SQL..."
                 rows="4"
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none resize-none focus:ring-2 focus:ring-blue-500"
               />
 
               <p className="text-xs text-slate-400 mt-2">
-                Don't worry if you're a complete beginner. AI will help
-                identify your skill gaps.
+                Don't worry if you're a complete beginner.
+                AI will help identify your skill gaps.
               </p>
 
             </div>
@@ -150,6 +224,7 @@ function Onboarding() {
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition"
             >
               Generate My Learning Path
+
               <ArrowRight size={18} />
             </button>
 

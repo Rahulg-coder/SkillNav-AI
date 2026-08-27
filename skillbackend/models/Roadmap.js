@@ -16,6 +16,17 @@ const phaseSchema = new mongoose.Schema({
     required: true,
   },
 
+  duration: {
+    type: String,
+    default: "",
+  },
+
+  prerequisites: [
+    {
+      type: String,
+    },
+  ],
+
   status: {
     type: String,
     enum: ["pending", "in-progress", "completed"],
@@ -32,6 +43,11 @@ const phaseSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     max: 100,
+    default: 0,
+  },
+
+  resources: {
+    type: Number,
     default: 0,
   },
 });

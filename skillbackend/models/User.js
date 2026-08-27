@@ -16,6 +16,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+    },
+
     targetRole: {
       type: String,
       default: "Software Developer",
@@ -23,9 +29,20 @@ const userSchema = new mongoose.Schema(
     },
 
     experience: {
-      type: Number,
-      default: 0,
-      min: 0,
+      type: String,
+      default: "Beginner",
+      enum: ["Beginner", "Intermediate", "Advanced"],
+    },
+
+    skills: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    learningHours: {
+      type: String,
+      default: "1-2",
     },
 
     profileCompleted: {

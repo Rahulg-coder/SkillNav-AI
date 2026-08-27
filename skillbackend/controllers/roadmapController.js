@@ -1,10 +1,18 @@
 const User = require("../models/User");
 
-const { calculateSkillGap } = require("../services/skillGapService");
+const {
+  calculateSkillGap,
+} = require("../services/skillGapService");
 
-const { generateRoadmap } = require("../services/roadmapService");
+const {
+  generateRoadmap,
+} = require("../services/roadmapService");
 
-const getRoadmap = async (req, res, next) => {
+const getRoadmap = async (
+  req,
+  res,
+  next,
+) => {
   try {
     const { userId } = req.query;
 
@@ -15,7 +23,8 @@ const getRoadmap = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user =
+      await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -24,15 +33,17 @@ const getRoadmap = async (req, res, next) => {
       });
     }
 
-    const skillGapData = await calculateSkillGap(userId);
+    const skillGapData =
+      await calculateSkillGap(userId);
 
-    const roadmap = await generateRoadmap(
-      userId,
-      user.targetRole,
-      skillGapData,
-    );
+    const roadmap =
+      await generateRoadmap(
+        userId,
+        user.targetRole,
+        skillGapData,
+      );
 
-    res.json({
+    return res.json({
       success: true,
       data: roadmap,
     });
