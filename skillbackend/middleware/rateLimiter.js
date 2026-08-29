@@ -8,8 +8,8 @@ const handler = (req, res, next, options) => {
 };
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 auth requests per windowMs
+  windowMs: process.env.AUTH_RATE_LIMIT_WINDOW_MS ? parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) : 15 * 60 * 1000,
+  max: process.env.AUTH_RATE_LIMIT_MAX ? parseInt(process.env.AUTH_RATE_LIMIT_MAX) : 10,
   standardHeaders: true,
   legacyHeaders: false,
   handler,
