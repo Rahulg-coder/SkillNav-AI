@@ -334,45 +334,17 @@ const getLearningContent = async (req, res, next) => {
     // FINAL RESOURCE DEBUG
     // =================================================
 
-    console.log(
-      "Final learning resources:"
-    );
-
-
-    content.resources.forEach(
-      (resource, index) => {
-
-        console.log(
-          `${index + 1}.`,
-          {
-
-            type:
-              resource.type,
-
-            title:
-              resource.title,
-
-            searchQuery:
-              resource.searchQuery ||
-              null,
-
-            url:
-              resource.url ||
-              null,
-
-            video:
-              resource.video?.videoId ||
-              null,
-
-            source:
-              resource.source ||
-              null,
-
-          }
-        );
-
-      }
-    );
+    // console.log("Final learning resources:");
+    // content.resources.forEach((resource, index) => {
+    //   console.log(`${index + 1}.`, {
+    //     type: resource.type,
+    //     title: resource.title,
+    //     searchQuery: resource.searchQuery || null,
+    //     url: resource.url || null,
+    //     video: resource.video?.videoId || null,
+    //     source: resource.source || null,
+    //   });
+    // });
 
 
     // =================================================

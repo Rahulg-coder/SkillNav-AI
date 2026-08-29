@@ -6,6 +6,7 @@ import {
   Mail,
   Sparkles,
 } from "lucide-react";
+import API from "../services/api";
 
 function Login() {
   const navigate = useNavigate();
@@ -13,13 +14,20 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Temporary frontend login
-    localStorage.setItem("skillpath_logged_in", "true");
-
-    navigate("/dashboard");
+    try {
+      const response = await API.post("/auth/login", { email, password });
+      if (response.data.success) {
+        localStorage.setItem("token", response.data.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.data.user));
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert(error.response?.data?.error || "Invalid email or password");
+    }
   };
 
   return (

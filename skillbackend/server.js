@@ -14,6 +14,8 @@ const assessmentRoutes = require("./routes/assessmentRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 
 const errorHandler = require("./middleware/errorHandler");
+const authMiddleware = require("./middleware/authMiddleware");
+const helmet = require("helmet");
 
 const app = express();
 
@@ -27,9 +29,14 @@ connectDB();
 // MIDDLEWARE
 // =====================================================
 
-app.use(cors());
+app.use(helmet({ crossOriginResourcePolicy: false }));
+
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
-app.use("/api/learning", learningRoutes);
 
 // =====================================================
 // ROOT
@@ -62,27 +69,24 @@ app.use("/api/auth", authRoutes);
 //============================================
 //USER PROFILE
 //============================================
-app.use("/api/profile", profileRoutes);
+app.use("/api/profile", authMiddleware, profileRoutes);
 
 // =====================================================
 // APPLICATION APIs
 // =====================================================
 
-app.use("/api/dashboard", dashboardRoutes);
-
-app.use("/api/skill-gap", skillGapRoutes);
-
-app.use("/api/roadmap", roadmapRoutes);
-
-app.use("/api/readiness", readinessRoutes);
-
-app.use("/api/assessment", assessmentRoutes);
+app.use("/api/dashboard", authMiddleware, dashboardRoutes);
+app.use("/api/skill-gap", authMiddleware, skillGapRoutes);
+app.use("/api/roadmap", authMiddleware, roadmapRoutes);
+app.use("/api/readiness", authMiddleware, readinessRoutes);
+app.use("/api/assessment", authMiddleware, assessmentRoutes);
+app.use("/api/learning", authMiddleware, learningRoutes);
 
 // =====================================================
 // AI CHAT
 // =====================================================
 
-app.use("/api/ai/chat", chatRoutes);
+app.use("/api/ai/chat", authMiddleware, chatRoutes);
 
 // =====================================================
 // ERROR HANDLER

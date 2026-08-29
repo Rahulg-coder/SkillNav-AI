@@ -5,10 +5,12 @@ const {
   submitAssessment,
 } = require("../controllers/assessmentController");
 
+const { assessmentLimiter } = require("../middleware/rateLimiter");
+
 const router = express.Router();
 
-router.post("/generate", generateAssessment);
+router.post("/generate", assessmentLimiter, generateAssessment);
 
-router.post("/", submitAssessment);
+router.post("/", assessmentLimiter, submitAssessment);
 
 module.exports = router;

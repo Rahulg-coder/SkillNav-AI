@@ -157,9 +157,6 @@ const submitAssessment = async (req, res, next) => {
       const Skill = require("../models/Skill");
 
       console.log("Persisting assessment skills for user:", userId);
-      console.log("Strengths received:", aiResult.strengths);
-      console.log("Skill gaps received:", aiResult.skillGaps);
-
       if (aiResult.strengths && Array.isArray(aiResult.strengths)) {
         for (const strength of aiResult.strengths) {
           await Skill.findOneAndUpdate(
@@ -167,7 +164,7 @@ const submitAssessment = async (req, res, next) => {
             { currentLevel: 85, requiredLevel: 80, category: "technical" },
             { upsert: true, new: true }
           );
-          console.log("Skill upsert completed:", strength);
+          // console.log("Skill upsert completed:", strength);
         }
       }
 
@@ -183,13 +180,12 @@ const submitAssessment = async (req, res, next) => {
             { currentLevel, requiredLevel: 80, category: "technical" },
             { upsert: true, new: true }
           );
-          console.log("Skill upsert completed:", gap.skill);
+          // console.log("Skill upsert completed:", gap.skill);
         }
       }
 
       const savedSkills = await Skill.find({ userId });
       console.log("Skills found after assessment:", savedSkills.length);
-      console.log(savedSkills);
 
       return res.status(201).json({
         success: true,
