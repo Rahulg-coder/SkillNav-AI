@@ -1,4 +1,5 @@
 const Assessment = require("../models/Assessment");
+const Roadmap = require("../models/Roadmap");
 
 const calculateReadiness = async (userId, skillGapData) => {
   const latestAssessment = await Assessment.findOne({ userId }).sort({
@@ -6,13 +7,10 @@ const calculateReadiness = async (userId, skillGapData) => {
   });
 
   const skillScore = skillGapData.overallScore || 0;
-
   const assessmentScore = latestAssessment?.score || 0;
-
   const readinessScore = Math.round(skillScore * 0.6 + assessmentScore * 0.4);
 
   let level;
-
   if (readinessScore >= 80) {
     level = "Excellent";
   } else if (readinessScore >= 65) {
@@ -23,19 +21,27 @@ const calculateReadiness = async (userId, skillGapData) => {
     level = "Not Ready";
   }
 
-  const strengths = skillGapData.skills
-    .filter((skill) => skill.gap < 15)
-    .map((skill) => skill.name);
-
-  const improvements = skillGapData.skills
-    .filter((skill) => skill.gap >= 15)
-    .map((skill) => skill.name);
+  // Get roadmap data
+  const roadmap = await Roadmap.findOne({ userId });
+  let milestones = [];
+  let learningProgress = 0;
+  
+  if (roadmap && roadmap.phases) {
+    learningProgress = roadmap.overallProgress || 0;
+    milestones = roadmap.phases.map(phase => ({
+      title: phase.title,
+      status: phase.status,
+      duration: phase.duration
+    }));
+  }
 
   return {
     score: readinessScore,
     level,
-    strengths,
-    improvements,
+    targetRole: skillGapData.targetRole,
+    skills: skillGapData.skills, // array of skills with currentLevel, requiredLevel, gap
+    milestones,
+    learningProgress
   };
 };
 

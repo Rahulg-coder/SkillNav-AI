@@ -1,6 +1,10 @@
 const Skill = require("../models/Skill");
+const User = require("../models/User");
 
 const calculateSkillGap = async (userId) => {
+  const user = await User.findById(userId);
+  const targetRole = user ? user.targetRole : "Unknown Role";
+
   const skills = await Skill.find({ userId });
 
   const processedSkills = skills.map((skill) => {
@@ -36,6 +40,7 @@ const calculateSkillGap = async (userId) => {
         );
 
   return {
+    targetRole,
     overallScore,
     totalSkills: processedSkills.length,
     skills: processedSkills,

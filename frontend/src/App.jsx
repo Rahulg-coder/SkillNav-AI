@@ -49,7 +49,6 @@ function App() {
               path="/roadmap"
               element={<Roadmap />}
             />
-            import LearningModule from "./pages/LearningModule";
             <Route
   path="/learning/:phaseId"
   element={<LearningModule />}

@@ -31,7 +31,6 @@ const generateAssessment = async (profile) => {
   }
 };
 
-
 // =====================================================
 // ANALYZE ASSESSMENT
 // =====================================================
@@ -59,6 +58,32 @@ const analyzeAssessment = async (assessmentData) => {
   }
 };
 
+// =====================================================
+// GENERATE LEARNING CONTENT
+// =====================================================
+
+const generateLearningContent = async (learningData) => {
+  try {
+    const response = await axios.post(
+      `${AI_ENGINE_URL}/learning-content`,
+      learningData,
+      {
+        timeout: 60000,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "AI learning content error:",
+      error.response?.data || error.message
+    );
+
+    throw new Error(
+      "AI Engine learning content service unavailable"
+    );
+  }
+};
 
 // =====================================================
 // AI CHAT
@@ -87,9 +112,13 @@ const chatWithAI = async (chatData) => {
   }
 };
 
+// =====================================================
+// EXPORTS
+// =====================================================
 
 module.exports = {
   generateAssessment,
   analyzeAssessment,
+  generateLearningContent,
   chatWithAI,
 };

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Brain,
@@ -7,79 +8,142 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
+import API from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 function SkillGap() {
-  const skills = [
-    {
-      name: "Python",
-      current: 85,
-      required: 80,
-      status: "strong",
-      description: "You have reached the required level.",
-    },
-    {
-      name: "Networking",
-      current: 78,
-      required: 75,
-      status: "strong",
-      description: "Your networking fundamentals are strong.",
-    },
-    {
-      name: "Linux",
-      current: 32,
-      required: 80,
-      status: "gap",
-      description: "Linux is currently one of your biggest gaps.",
-    },
-    {
-      name: "Web Security",
-      current: 48,
-      required: 75,
-      status: "learning",
-      description: "You have started building this skill.",
-    },
-    {
-      name: "SIEM",
-      current: 15,
-      required: 70,
-      status: "gap",
-      description: "SIEM is currently a major skill gap.",
-    },
-    {
-      name: "Incident Response",
-      current: 10,
-      required: 70,
-      status: "gap",
-      description: "This should be learned after SIEM fundamentals.",
-    },
-  ];
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const getStatus = (status) => {
-    if (status === "strong") {
+  const userId = localStorage.getItem("skillpath_user_id");
+
+  useEffect(() => {
+    const fetchSkillGap = async () => {
+      if (!userId) {
+        setError("User session not found.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await API.get(`/skill-gap?userId=${userId}`);
+
+        if (!response.data.success) {
+          setError(response.data.error || "Unable to load skill gap data.");
+          return;
+        }
+
+        setData(response.data.data);
+      } catch (err) {
+        console.error("Skill gap error:", err);
+        setError(
+          err.response?.data?.error || "Unable to connect to the backend."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSkillGap();
+  }, [userId]);
+
+  const getStatus = (gap) => {
+    if (gap >= 30) {
       return {
-        label: "Strong",
-        color: "text-emerald-600",
-        bg: "bg-emerald-50",
-        icon: CheckCircle2,
+        label: "Skill Gap",
+        color: "text-red-600",
+        bg: "bg-red-50",
+        icon: CircleAlert,
+        type: "gap"
       };
     }
 
-    if (status === "learning") {
+    if (gap > 0) {
       return {
         label: "Learning",
         color: "text-amber-600",
         bg: "bg-amber-50",
         icon: TrendingUp,
+        type: "learning"
       };
     }
 
     return {
-      label: "Skill Gap",
-      color: "text-red-600",
-      bg: "bg-red-50",
-      icon: CircleAlert,
+      label: "Strong",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      icon: CheckCircle2,
+      type: "strong"
     };
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
+          <p className="text-slate-500 mt-4">Analyzing your skills...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+        <h2 className="font-bold text-red-700">Unable to load skill gap</h2>
+        <p className="text-sm text-red-600 mt-2">{error}</p>
+        {!userId && (
+          <button
+            onClick={() => navigate("/login")}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl"
+          >
+            Login Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!data || !data.skills || data.skills.length === 0) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center">
+        <div className="w-14 h-14 mx-auto bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+          <Brain size={26} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mt-4">No Skill Data Found</h2>
+        <p className="text-slate-500 mt-2">
+          Complete an assessment to generate your skill gap analysis.
+        </p>
+        <button
+          onClick={() => navigate("/assessment")}
+          className="mt-6 px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+        >
+          Take Assessment
+        </button>
+      </div>
+    );
+  }
+
+  const { targetRole, overallScore, skills, topPriority } = data;
+
+  // Build AI analysis string
+  const strongSkills = skills.filter(s => s.gap === 0).map(s => s.name);
+  const weakSkills = skills.filter(s => s.gap >= 30).map(s => s.name);
+
+  let aiSummary = "";
+  if (strongSkills.length > 0) {
+    aiSummary += `You already have strong foundations in ${strongSkills.join(" and ")}. `;
+  }
+  if (weakSkills.length > 0) {
+    aiSummary += `Your biggest gaps are ${weakSkills.join(", ")}. `;
+  }
+  if (topPriority) {
+    aiSummary += `${topPriority} should be your next priority to reach your target career goals.`;
+  }
 
   return (
     <div className="space-y-6">
@@ -118,7 +182,7 @@ function SkillGap() {
               </p>
 
               <h2 className="text-xl font-bold mt-1">
-                Cybersecurity Engineer
+                {targetRole}
               </h2>
             </div>
 
@@ -130,7 +194,7 @@ function SkillGap() {
             </p>
 
             <p className="text-3xl font-bold mt-1">
-              58%
+              {overallScore}%
             </p>
           </div>
 
@@ -154,11 +218,7 @@ function SkillGap() {
             </h2>
 
             <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-              You already have strong foundations in Python and
-              Networking. Your biggest gaps are Linux, SIEM and
-              Incident Response. Linux should be your next priority
-              because it is a prerequisite for several advanced
-              cybersecurity skills.
+              {aiSummary || "We have analyzed your skills and prepared recommendations for your learning journey."}
             </p>
 
           </div>
@@ -183,7 +243,7 @@ function SkillGap() {
           </div>
 
           <span className="text-sm text-slate-400">
-            6 skills analyzed
+            {skills.length} skills analyzed
           </span>
 
         </div>
@@ -192,7 +252,7 @@ function SkillGap() {
 
           {skills.map((skill) => {
 
-            const status = getStatus(skill.status);
+            const status = getStatus(skill.gap);
             const StatusIcon = status.icon;
 
             return (
@@ -218,12 +278,12 @@ function SkillGap() {
 
                   <div className="text-sm">
                     <span className="font-semibold text-slate-800">
-                      {skill.current}%
+                      {skill.currentLevel}%
                     </span>
 
                     <span className="text-slate-400">
                       {" "}
-                      / {skill.required}%
+                      / {skill.requiredLevel}%
                     </span>
                   </div>
 
@@ -234,15 +294,14 @@ function SkillGap() {
 
                   {/* Current level */}
                   <div
-                    className={`absolute left-0 top-0 h-full rounded-full ${
-                      skill.status === "strong"
-                        ? "bg-emerald-500"
-                        : skill.status === "learning"
+                    className={`absolute left-0 top-0 h-full rounded-full ${status.type === "strong"
+                      ? "bg-emerald-500"
+                      : status.type === "learning"
                         ? "bg-amber-500"
                         : "bg-red-500"
-                    }`}
+                      }`}
                     style={{
-                      width: `${skill.current}%`,
+                      width: `${skill.currentLevel}%`,
                     }}
                   />
 
@@ -250,7 +309,7 @@ function SkillGap() {
                   <div
                     className="absolute top-0 h-full w-0.5 bg-slate-800"
                     style={{
-                      left: `${skill.required}%`,
+                      left: `${skill.requiredLevel}%`,
                     }}
                   />
 
@@ -263,13 +322,17 @@ function SkillGap() {
                   </p>
 
                   <p className="text-xs text-slate-400">
-                    Target: {skill.required}%
+                    Target: {skill.requiredLevel}%
                   </p>
 
                 </div>
 
                 <p className="text-xs text-slate-500 mt-2">
-                  {skill.description}
+                  {status.type === "strong"
+                    ? "You have reached the required level."
+                    : status.type === "learning"
+                      ? "You are building this skill."
+                      : `${skill.name} is currently a skill gap.`}
                 </p>
 
               </div>
@@ -294,7 +357,7 @@ function SkillGap() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
           {skills
-            .filter((skill) => skill.status === "gap")
+            .filter((skill) => getStatus(skill.gap).type === "gap")
             .slice(0, 3)
             .map((skill, index) => (
 
@@ -310,7 +373,7 @@ function SkillGap() {
                   </span>
 
                   <span className="text-sm text-slate-400">
-                    Gap: {skill.required - skill.current}%
+                    Gap: {skill.gap}%
                   </span>
 
                 </div>
@@ -320,10 +383,12 @@ function SkillGap() {
                 </h3>
 
                 <p className="text-sm text-slate-500 mt-2">
-                  Current: {skill.current}% · Target: {skill.required}%
+                  Current: {skill.currentLevel}% · Target: {skill.requiredLevel}%
                 </p>
 
-                <button className="mt-4 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700">
+                <button
+                  onClick={() => navigate("/roadmap")}
+                  className="mt-4 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700">
                   View recommended learning
                   <ArrowRight size={16} />
                 </button>

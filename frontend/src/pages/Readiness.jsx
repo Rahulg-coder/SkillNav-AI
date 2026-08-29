@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Brain,
@@ -8,35 +9,113 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
+import API from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 function Readiness() {
-  const skills = [
-    { name: "Python", score: 85, status: "Strong" },
-    { name: "Networking", score: 78, status: "Strong" },
-    { name: "Linux", score: 32, status: "Needs Work" },
-    { name: "Web Security", score: 48, status: "Learning" },
-    { name: "SIEM", score: 15, status: "Needs Work" },
-    { name: "Incident Response", score: 10, status: "Needs Work" },
-  ];
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const milestones = [
-    {
-      title: "Networking Fundamentals",
-      status: "completed",
-    },
-    {
-      title: "Linux Fundamentals",
-      status: "completed",
-    },
-    {
-      title: "Security Fundamentals",
-      status: "current",
-    },
-    {
-      title: "SIEM & Log Analysis",
-      status: "upcoming",
-    },
-  ];
+  const userId = localStorage.getItem("skillpath_user_id");
+
+  useEffect(() => {
+    const fetchReadiness = async () => {
+      if (!userId) {
+        setError("User session not found.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await API.get(`/readiness?userId=${userId}`);
+        
+        if (!response.data.success) {
+          setError(response.data.error || "Unable to load readiness data.");
+          return;
+        }
+
+        setData(response.data.data);
+      } catch (err) {
+        console.error("Readiness fetch error:", err);
+        setError(
+          err.response?.data?.error || "Unable to connect to the backend."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReadiness();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
+          <p className="text-slate-500 mt-4">Analyzing your readiness...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+        <h2 className="font-bold text-red-700">Unable to load readiness</h2>
+        <p className="text-sm text-red-600 mt-2">{error}</p>
+        {!userId && (
+          <button
+            onClick={() => navigate("/login")}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl"
+          >
+            Login Again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!data || !data.skills) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center">
+        <div className="w-14 h-14 mx-auto bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+          <Target size={26} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mt-4">No Data Found</h2>
+        <p className="text-slate-500 mt-2">
+          Complete an assessment to generate your career readiness.
+        </p>
+        <button
+          onClick={() => navigate("/assessment")}
+          className="mt-6 px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+        >
+          Take Assessment
+        </button>
+      </div>
+    );
+  }
+
+  const { score, level, targetRole, skills, milestones, learningProgress } = data;
+
+  const strongCount = skills.filter(s => s.gap === 0).length;
+  const gapCount = skills.filter(s => s.gap > 0).length;
+
+  const strongSkills = skills.filter(s => s.gap === 0).map(s => s.name);
+  const weakSkills = skills.filter(s => s.gap >= 30).map(s => s.name);
+  
+  let aiSummary = "";
+  if (strongSkills.length > 0) {
+    aiSummary += `Your foundations in ${strongSkills.join(" and ")} are strong. `;
+  }
+  if (weakSkills.length > 0) {
+    aiSummary += `Your biggest readiness blockers are ${weakSkills.join(", ")}.`;
+  }
+
+  const nextActionMilestone = milestones.find(m => m.status === 'upcoming' || m.status === 'in-progress' || m.status === 'current');
 
   return (
     <div className="space-y-6">
@@ -90,7 +169,7 @@ function Readiness() {
                   strokeWidth="10"
                   fill="none"
                   strokeDasharray="314"
-                  strokeDashoffset="69"
+                  strokeDashoffset={314 - (314 * score) / 100}
                   strokeLinecap="round"
                   className="text-blue-500"
                 />
@@ -98,7 +177,7 @@ function Readiness() {
 
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-3xl font-bold">
-                  78%
+                  {score}%
                 </span>
 
                 <span className="text-xs text-slate-400">
@@ -114,11 +193,14 @@ function Readiness() {
               </p>
 
               <h2 className="text-2xl font-bold mt-1">
-                Cybersecurity Engineer
+                {targetRole || "Career"}
               </h2>
 
               <p className="text-sm text-slate-400 mt-3">
-                You're making good progress toward your target career.
+                {level === "Excellent" ? "You're exceptionally prepared." : 
+                 level === "Good" ? "You're making good progress toward your target career." :
+                 level === "Needs Improvement" ? "You have some work to do to be ready." :
+                 "You are just getting started."}
               </p>
             </div>
 
@@ -133,9 +215,7 @@ function Readiness() {
             </div>
 
             <p className="text-sm text-slate-300 mt-3 leading-relaxed">
-              Your foundations in Python and Networking are strong.
-              Your biggest readiness blockers are Linux, SIEM and
-              Incident Response.
+              {aiSummary || "We have analyzed your readiness based on your latest assessment."}
             </p>
 
           </div>
@@ -153,7 +233,7 @@ function Readiness() {
           </p>
 
           <p className="text-3xl font-bold text-slate-900 mt-2">
-            2
+            {strongCount}
           </p>
 
           <div className="flex items-center gap-1 text-sm text-emerald-600 mt-3">
@@ -168,7 +248,7 @@ function Readiness() {
           </p>
 
           <p className="text-3xl font-bold text-slate-900 mt-2">
-            3
+            {gapCount}
           </p>
 
           <div className="flex items-center gap-1 text-sm text-red-600 mt-3">
@@ -183,7 +263,7 @@ function Readiness() {
           </p>
 
           <p className="text-3xl font-bold text-slate-900 mt-2">
-            42%
+            {learningProgress}%
           </p>
 
           <div className="flex items-center gap-1 text-sm text-blue-600 mt-3">
@@ -198,7 +278,7 @@ function Readiness() {
           </p>
 
           <p className="text-3xl font-bold text-slate-900 mt-2">
-            38h
+            --
           </p>
 
           <div className="flex items-center gap-1 text-sm text-slate-500 mt-3">
@@ -243,19 +323,19 @@ function Readiness() {
 
                   <span
                     className={`ml-2 text-xs ${
-                      skill.score >= 70
+                      skill.currentLevel >= 70
                         ? "text-emerald-600"
-                        : skill.score >= 40
+                        : skill.currentLevel >= 40
                         ? "text-amber-600"
                         : "text-red-600"
                     }`}
                   >
-                    {skill.status}
+                    {skill.gap === 0 ? "Strong" : skill.gap >= 30 ? "Needs Work" : "Learning"}
                   </span>
                 </div>
 
                 <span className="text-sm font-semibold text-slate-700">
-                  {skill.score}%
+                  {skill.currentLevel}%
                 </span>
 
               </div>
@@ -264,14 +344,14 @@ function Readiness() {
 
                 <div
                   className={`h-full rounded-full ${
-                    skill.score >= 70
+                    skill.currentLevel >= 70
                       ? "bg-emerald-500"
-                      : skill.score >= 40
+                      : skill.currentLevel >= 40
                       ? "bg-amber-500"
                       : "bg-red-500"
                   }`}
                   style={{
-                    width: `${skill.score}%`,
+                    width: `${skill.currentLevel}%`,
                   }}
                 />
 
@@ -301,7 +381,9 @@ function Readiness() {
 
           <div className="mt-6 space-y-5">
 
-            {milestones.map((item) => (
+            {milestones.length === 0 ? (
+               <p className="text-sm text-slate-500">No milestones found.</p>
+            ) : milestones.map((item) => (
 
               <div
                 key={item.title}
@@ -312,7 +394,7 @@ function Readiness() {
                   <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
                     <CheckCircle2 size={18} />
                   </div>
-                ) : item.status === "current" ? (
+                ) : item.status === "current" || item.status === "in-progress" ? (
                   <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
                     <Brain size={18} />
                   </div>
@@ -328,7 +410,7 @@ function Readiness() {
                   </p>
 
                   <p className="text-xs text-slate-400 mt-1 capitalize">
-                    {item.status}
+                    {item.status === "in-progress" ? "current" : item.status}
                   </p>
                 </div>
 
@@ -349,22 +431,22 @@ function Readiness() {
           </div>
 
           <h2 className="text-xl font-bold text-slate-900 mt-4">
-            Strengthen Linux Fundamentals
+            {nextActionMilestone ? `Complete ${nextActionMilestone.title}` : "Continue Learning"}
           </h2>
 
           <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-            Improving your Linux skills will increase your career
+            Completing your next milestone will increase your career
             readiness and unlock the next stages of your roadmap.
           </p>
 
           <div className="flex items-center gap-2 text-sm text-slate-500 mt-4">
             <Clock3 size={16} />
-            Estimated: 7 hours
+            Estimated: {nextActionMilestone?.duration || "--"}
           </div>
 
           <button
             onClick={() =>
-              (window.location.href = "/roadmap")
+              navigate("/roadmap")
             }
             className="mt-5 flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
           >

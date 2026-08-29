@@ -8,49 +8,122 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import API from "../services/api";
+
 function Results() {
-  const score = 60;
+  const navigate = useNavigate();
+  const [score, setScore] = useState(0);
+  const [strengths, setStrengths] = useState([]);
+  const [weakAreas, setWeakAreas] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const strengths = [
-    "Networking Fundamentals",
-    "Security Concepts",
-  ];
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setLoading(true);
+        const userId = localStorage.getItem("skillpath_user_id");
+        if (!userId) {
+          setError("User session not found.");
+          setLoading(false);
+          return;
+        }
 
-  const weakAreas = [
-    {
-      name: "Linux",
-      score: 32,
-      target: 80,
-    },
-    {
-      name: "SIEM",
-      score: 15,
-      target: 70,
-    },
-    {
-      name: "Incident Response",
-      score: 10,
-      target: 70,
-    },
-  ];
+        const [dashboardRes, skillGapRes, roadmapRes] = await Promise.all([
+          API.get(`/dashboard?userId=${userId}`),
+          API.get(`/skill-gap?userId=${userId}`),
+          API.get(`/roadmap?userId=${userId}`)
+        ]);
 
-  const recommendations = [
-    {
-      title: "Linux Fundamentals",
-      reason: "Your Linux proficiency is below the required level.",
-      priority: "High",
-    },
-    {
-      title: "SIEM & Log Analysis",
-      reason: "SIEM is an important skill for your target role.",
-      priority: "High",
-    },
-    {
-      title: "Incident Response",
-      reason: "Recommended after building Linux and SIEM foundations.",
-      priority: "Medium",
-    },
-  ];
+        if (dashboardRes.data?.success) {
+          setScore(dashboardRes.data.data.overallScore);
+        }
+
+        if (skillGapRes.data?.success) {
+          const skills = skillGapRes.data.data.skills || [];
+          
+          const str = skills.filter(s => s.gap === 0).map(s => s.name);
+          setStrengths(str);
+
+          const weak = skills.filter(s => s.gap > 0).sort((a, b) => b.gap - a.gap);
+          setWeakAreas(weak);
+
+          const recs = [];
+          const phases = roadmapRes.data?.data?.phases || [];
+
+          // Generate recommendations for the top 3 weak areas
+          const topWeak = weak.slice(0, 3);
+          for (const w of topWeak) {
+            // Find a phase that includes this skill
+            const matchingPhase = phases.find(p => p.skills.some(s => s.toLowerCase() === w.name.toLowerCase()));
+            
+            recs.push({
+              title: matchingPhase ? matchingPhase.title : `${w.name} Fundamentals`,
+              reason: matchingPhase ? matchingPhase.description : `Your ${w.name} proficiency is below the required target level. Focus on this skill to close the gap.`,
+              priority: w.priority === 'high' ? 'High' : (w.priority === 'medium' ? 'Medium' : 'Low'),
+              moduleId: matchingPhase ? matchingPhase._id : null,
+              phase: matchingPhase || null
+            });
+          }
+          setRecommendations(recs);
+        }
+      } catch (err) {
+        console.error("Results load error:", err);
+        setError("Unable to load assessment results.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, []);
+
+  const handleStartLearning = (rec) => {
+    if (rec.moduleId && rec.phase) {
+      navigate(`/learning/${rec.moduleId}`, {
+        state: { phase: rec.phase }
+      });
+    } else {
+      navigate("/roadmap");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        <p className="text-slate-500 font-medium">Loading your assessment results...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <CircleAlert size={48} className="text-red-500" />
+        <p className="text-red-600 font-medium">{error}</p>
+        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-slate-100 rounded-lg text-slate-700 hover:bg-slate-200">
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (weakAreas.length === 0 && strengths.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <CheckCircle2 size={48} className="text-emerald-500" />
+        <p className="text-slate-600 font-medium">No assessment results available.</p>
+        <button onClick={() => navigate("/assessment")} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          Take Assessment
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -108,18 +181,22 @@ function Results() {
 
           <div className="mt-5 space-y-3">
 
-            {strengths.map((strength) => (
-              <div
-                key={strength}
-                className="flex items-center gap-2 text-sm text-slate-600"
-              >
-                <CheckCircle2
-                  size={16}
-                  className="text-emerald-500"
-                />
-                {strength}
-              </div>
-            ))}
+            {strengths.length > 0 ? (
+              strengths.map((strength, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 text-sm text-slate-600"
+                >
+                  <CheckCircle2
+                    size={16}
+                    className="text-emerald-500"
+                  />
+                  {strength}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No specific strengths identified yet.</p>
+            )}
 
           </div>
 
@@ -167,12 +244,12 @@ function Results() {
             </h2>
 
             <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-              Your assessment shows that you have a reasonable
-              cybersecurity foundation, but Linux, SIEM and Incident
-              Response require additional learning. SkillPath-AI has
-              prioritized these areas and will use them to refine your
-              learning roadmap.
-            </p>
+              Your assessment shows that you have a foundation in certain areas, but{" "}
+            {weakAreas.length > 0
+              ? `${weakAreas.slice(0, 3).map(w => w.name).join(", ")} require additional learning.`
+              : "there are no significant skill gaps identified."}
+            {" "}SkillPath-AI has prioritized these areas and used them to dynamically refine your learning roadmap.
+          </p>
 
           </div>
 
@@ -204,43 +281,50 @@ function Results() {
 
         <div className="space-y-6">
 
-          {weakAreas.map((skill) => {
+          {weakAreas.length > 0 ? (
+            weakAreas.map((skill) => {
+              const gap = skill.gap;
+              
+              return (
+                <div key={skill.name}>
 
-            const gap = skill.target - skill.score;
+                  <div className="flex items-center justify-between mb-2">
 
-            return (
-              <div key={skill.name}>
+                    <span className="font-semibold text-slate-800">
+                      {skill.name}
+                    </span>
 
-                <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-500">
+                      {skill.currentLevel}% / {skill.requiredLevel}%
+                    </span>
 
-                  <span className="font-semibold text-slate-800">
-                    {skill.name}
-                  </span>
+                  </div>
 
-                  <span className="text-sm text-slate-500">
-                    {skill.score}% / {skill.target}%
-                  </span>
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+
+                    <div
+                      className={`h-full rounded-full ${gap >= 30 ? 'bg-red-500' : 'bg-amber-500'}`}
+                      style={{
+                        width: `${skill.currentLevel}%`,
+                      }}
+                    />
+
+                  </div>
+
+                  <p className={`text-xs mt-2 ${gap >= 30 ? 'text-red-500' : 'text-amber-500'}`}>
+                    {gap}% gap remaining
+                  </p>
 
                 </div>
-
-                <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-
-                  <div
-                    className="h-full bg-red-500 rounded-full"
-                    style={{
-                      width: `${skill.score}%`,
-                    }}
-                  />
-
-                </div>
-
-                <p className="text-xs text-red-500 mt-2">
-                  {gap}% gap remaining
-                </p>
-
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center p-6 bg-emerald-50 rounded-xl border border-emerald-100">
+              <CheckCircle2 size={32} className="mx-auto text-emerald-500 mb-2" />
+              <p className="text-emerald-700 font-medium">No significant skill gaps identified!</p>
+              <p className="text-sm text-emerald-600 mt-1">You are well prepared for your target role.</p>
+            </div>
+          )}
 
         </div>
 
@@ -270,48 +354,57 @@ function Results() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-          {recommendations.map((item) => (
+          {recommendations.length > 0 ? (
+            recommendations.map((item, idx) => (
 
-            <div
-              key={item.title}
-              className="bg-white border border-slate-200 rounded-2xl p-5"
-            >
+              <div
+                key={idx}
+                className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col"
+              >
 
-              <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between">
 
-                <span
-                  className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                    item.priority === "High"
-                      ? "bg-red-50 text-red-600"
-                      : "bg-amber-50 text-amber-600"
-                  }`}
+                  <span
+                    className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                      item.priority === "High"
+                        ? "bg-red-50 text-red-600"
+                        : "bg-amber-50 text-amber-600"
+                    }`}
+                  >
+                    {item.priority} Priority
+                  </span>
+
+                  <Sparkles
+                    size={17}
+                    className="text-blue-500"
+                  />
+
+                </div>
+
+                <h3 className="font-bold text-slate-900 mt-4">
+                  {item.title}
+                </h3>
+
+                <p className="text-sm text-slate-500 mt-2 leading-relaxed flex-1">
+                  {item.reason}
+                </p>
+
+                <button 
+                  onClick={() => handleStartLearning(item)}
+                  className="mt-5 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 w-fit"
                 >
-                  {item.priority} Priority
-                </span>
-
-                <Sparkles
-                  size={17}
-                  className="text-blue-500"
-                />
+                  Start learning
+                  <ArrowRight size={16} />
+                </button>
 
               </div>
 
-              <h3 className="font-bold text-slate-900 mt-4">
-                {item.title}
-              </h3>
-
-              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                {item.reason}
-              </p>
-
-              <button className="mt-5 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700">
-                Start learning
-                <ArrowRight size={16} />
-              </button>
-
+            ))
+          ) : (
+            <div className="col-span-full text-center p-6 bg-slate-50 rounded-xl border border-slate-200 text-slate-500">
+              No recommendations available based on current skill gaps.
             </div>
-
-          ))}
+          )}
 
         </div>
 
@@ -348,9 +441,7 @@ function Results() {
           </div>
 
           <button
-            onClick={() =>
-              (window.location.href = "/roadmap")
-            }
+            onClick={() => navigate("/roadmap")}
             className="shrink-0 flex items-center justify-center gap-2 px-5 py-3 bg-white text-slate-900 rounded-xl font-semibold hover:bg-slate-100 transition"
           >
             View Updated Roadmap

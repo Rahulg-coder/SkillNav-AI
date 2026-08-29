@@ -1,6 +1,8 @@
 const User = require("../models/User");
 const Assessment = require("../models/Assessment");
 const Roadmap = require("../models/Roadmap");
+const { calculateSkillGap } = require("../services/skillGapService");
+const { calculateReadiness } = require("../services/readinessService");
 
 const getDashboard = async (req, res, next) => {
   try {
@@ -31,6 +33,16 @@ const getDashboard = async (req, res, next) => {
     const roadmap = await Roadmap.findOne({
       userId,
     });
+    
+    // Calculate accurate readiness from the same source of truth
+    let readinessScore = assessment?.score || 0;
+    try {
+      const skillGapData = await calculateSkillGap(userId);
+      const readinessData = await calculateReadiness(userId, skillGapData);
+      readinessScore = readinessData.score;
+    } catch (err) {
+      console.error("Dashboard readiness calculation error:", err.message);
+    }
 
     res.json({
       success: true,
@@ -47,7 +59,7 @@ const getDashboard = async (req, res, next) => {
 
         roadmapProgress: roadmap?.overallProgress || 0,
 
-        readinessScore: assessment?.score || 0,
+        readinessScore: readinessScore,
 
         profileCompleted: user.profileCompleted,
       },

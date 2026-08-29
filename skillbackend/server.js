@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-
+const learningRoutes = require("./routes/learningRoutes");
 const connectDB = require("./config/db");
 const profileRoutes = require("./routes/profileRoutes");
 const authRoutes = require("./routes/authRoutes");
@@ -29,6 +29,7 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/learning", learningRoutes);
 
 // =====================================================
 // ROOT

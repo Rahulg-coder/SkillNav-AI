@@ -455,7 +455,7 @@ function Dashboard() {
             </div>
 
             <button
-              onClick={() => navigate("/learning-roadmap")}
+              onClick={() => navigate("/roadmap")}
               className="text-sm text-blue-600 font-medium flex items-center gap-1"
             >
               View Full Path

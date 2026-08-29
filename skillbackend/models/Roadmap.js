@@ -50,6 +50,16 @@ const phaseSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+
+  score: {
+    type: Number,
+    default: null,
+  },
+
+  completedAt: {
+    type: Date,
+    default: null,
+  },
 });
 
 const roadmapSchema = new mongoose.Schema(
