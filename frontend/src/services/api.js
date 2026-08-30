@@ -19,10 +19,13 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      localStorage.removeItem("skillpath_token");
+      localStorage.removeItem("skillpath_user_id");
+      localStorage.removeItem("skillpath_user_name");
+      localStorage.removeItem("skillpath_user_email");
+      localStorage.removeItem("skillpath_logged_in");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      localStorage.removeItem("skillpath_token");
-      localStorage.removeItem("skillpath_logged_in");
       window.location.href = "/login";
     }
     return Promise.reject(error);

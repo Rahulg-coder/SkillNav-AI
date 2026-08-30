@@ -20,8 +20,12 @@ function Login() {
     try {
       const response = await API.post("/auth/login", { email, password });
       if (response.data.success) {
-        localStorage.setItem("token", response.data.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.data.user));
+        const { token, user } = response.data.data;
+        localStorage.setItem("skillpath_token", token);
+        localStorage.setItem("skillpath_user_id", user.id);
+        localStorage.setItem("skillpath_user_name", user.name);
+        localStorage.setItem("skillpath_user_email", user.email);
+        localStorage.setItem("skillpath_logged_in", "true");
         navigate("/dashboard");
       }
     } catch (error) {
